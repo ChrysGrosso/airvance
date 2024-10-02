@@ -448,10 +448,10 @@ def main():
                 st.download_button(label="Download HVAC market image", data=file, file_name="HVAC_market.png", mime="image/png")
             
             st.markdown('<script>window.scrollTo(0,0);</script>', unsafe_allow_html=True)
-            st.image("Eurovent.png", use_column_width=True)
+            st.image("eurovent.png", use_column_width=True)
             # Ajouter un bouton pour télécharger l'image
-            with open("Eurovent.png", "rb") as file:
-                st.download_button(label="Download Eurovent image", data=file, file_name="Eurovent.png", mime="image/png")
+            with open("eurovent.png", "rb") as file:
+                st.download_button(label="Download Eurovent image", data=file, file_name="eurovent.png", mime="image/png")
 
             st.markdown("<hr>", unsafe_allow_html=True)
             st.markdown('<script>window.scrollTo(0,0);</script>', unsafe_allow_html=True)
