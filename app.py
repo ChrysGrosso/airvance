@@ -431,14 +431,15 @@ def main():
         
     elif choix == "HVAC market":
             data3 = pd.read_excel("Ventilation_trends.xlsx")
-            
             data4 = pd.read_excel("HVAC_market.xlsx")           
-            
             
             st.markdown("<hr>", unsafe_allow_html=True)
             st.markdown("### Page 2 - HVAC Market", unsafe_allow_html=True)
             st.markdown("_Main sources : Euroconstruct 2024 Summer edition, Eurovent July 2024, BSRIA April 2024_")
             st.markdown("<hr>", unsafe_allow_html=True)
+            st.markdown('### Overall trends for the Airvance group’s trading zone')
+            st.markdown('<script>window.scrollTo(0,0);</script>', unsafe_allow_html=True)
+            st.markdown('<script>window.scrollTo(0,0);</script>', unsafe_allow_html=True)
             
     
             # Current path
