@@ -5,20 +5,32 @@ import plotly.graph_objects as go
 
 
 def main():
+
+    # Filtre par pays dans le menu général
     st.title("Construction and HVAC markets")
-    
+
     # Menu sur le côté avec le composant sidebar
     st.sidebar.title("Airvance-MI-Database")
     choix = st.sidebar.selectbox("Choose a tab", ["Construction market", "HVAC market"])
 
+    #Filtre par pays
+    data = pd.read_excel("euroconstruct_totaux_%_constant.xlsx")
+    countries = data['Country'].unique()
+    
+    if 'selected_countries' not in st.session_state:
+        st.session_state.selected_countries = []
+
+    st.session_state.selected_countries = st.sidebar.multiselect(
+        'Select the country. For an overview of the Airvance groups\'s catchment area, select \'All Countries\'',
+        options=countries,
+        default=st.session_state.selected_countries
+    )
+
     if choix == "Construction market":
-        data = pd.read_excel("euroconstruct_totaux_%_constant.xlsx")
         data2 = pd.read_excel("euroconstruct_detailed_NR_totaux.xlsx")
-        #to skip a line : st.markdown('<script>window.scrollTo(0,0);</script>', unsafe_allow_html=True)
         st.markdown("<hr>", unsafe_allow_html=True)
         st.markdown("### Page 1 - Euroconstruct forecasts on Construction market", unsafe_allow_html=True)
         st.markdown("_2024 Euroconstruct Summer edition - ref year : 2023_")
-        #st.markdown("### Airvance Group's trading area")
         st.write("""
             <style>
                 p {
@@ -30,8 +42,6 @@ def main():
                  highlighting key market volume indicators and trends to support your data-driven decision-making.</p>
              """, unsafe_allow_html=True)
         
-        
-        
         st.write("""
             <style>
                 p {
@@ -42,11 +52,11 @@ def main():
              """, unsafe_allow_html=True)
        
         # Sélection des filtres
-        selected_countries = st.multiselect('Select the country. For an overview of the Airvance groups\'s catchment area, select \'All Countries\'', options=data['Country'].unique())
+        selected_countries = st.session_state.selected_countries
+        st.markdown("<hr>", unsafe_allow_html=True)
         st.subheader("Construction market trends (level at constant price)")
         st.write("_Ref year : 2023. 'R&M' stands for Renovation (Repairs and Maintenance), 'New' for Construction_")
        
-
         # Filtrer les données en fonction des filtres sélectionnés
         if selected_countries:
             filtered_data = data[data['Country'].isin(selected_countries)].copy()
@@ -55,17 +65,18 @@ def main():
             filtered_data = data.copy()
             filtered_data2 = data2.copy()
 
+    
         # Formater les colonnes du premier Dataframe
         if 'Market (constant €)' in filtered_data.columns:
             filtered_data['Year'] = filtered_data['Year'].astype(str)
-            filtered_data['Market (constant Billion €)'] = filtered_data['Market (constant €)'] / 1e9
+            filtered_data['Market (constant Billion €)'] = (filtered_data['Market (constant €)'] / 1e9).round(2)
         else:
             st.error("The requested columns are not available in the filtered data.")
         
         # Formater les colonnes du deuxième Dataframe
         if 'Market (constant €)' in filtered_data2.columns:
             filtered_data2['Year'] = filtered_data2['Year'].astype(str)
-            filtered_data2['Market (constant Billion €)'] = filtered_data2['Market (constant €)'] / 1e9
+            filtered_data2['Market (constant Billion €)'] = (filtered_data2['Market (constant €)'] / 1e9).round(2)
         
            
 
@@ -87,12 +98,12 @@ def main():
             fig_market = px.line(
                 filtered_data1,
                 x='Year',
-                y='Market (constant €)',
+                y='Market (constant Billion €)',
                 color='Activity type',
                 line_dash='Construction segment',
                 color_discrete_map=color_discrete_map,                
-                labels={'Market (constant Billion €)': 'Market (Constant €)'},
-                title='Construction Market Trends (Constant Bn €)'
+                labels={'Market (constant Billion €)': 'Market (Constant Billion €)'},
+                title='Construction Market Trends (Constant €)'
             )
             fig_market.update_layout(legend={'x': 0.75, 'y': -0.9})       
             # Afficher toutes les années sur l'axe x
@@ -186,11 +197,11 @@ def main():
             fig_market2 = px.line(
                 filtered_data_graph,    
                 x='Year',
-                y='Market (constant €)',                
+                y='Market (constant Billion €)',                
                 color='Construction type',
                 #line_dash='Activity type',
                 height=400,              
-                labels={'Market (constant Billion €)': 'Market (Constant €)'},
+                labels={'Market (constant Billion €)': 'Market (Constant Billion €)'},
                 title='Construction Market trends by type of Non-Residential Building'
             )
             
@@ -218,8 +229,9 @@ def main():
             st.write('**You can download them at your convenience :**')
             st.write('**1. Construction market by Construction segment (Non-Residential / Residential)**')
             #st.image("download.png", width=20) #:arrow_down_small:
+            filtered_data['Market (constant €)'] = filtered_data['Market (constant €)'].apply(lambda x: f"{x:,.0f}".replace(',', ' '))
             st.dataframe(filtered_data[['Country', 'Year', 'Activity type', 'Construction segment', \
-                                    'Market (constant Billion €)', 'Evolution (%)']], use_container_width=True)
+                                    'Market (constant €)', 'Evolution (%)']], use_container_width=True)
             
             st.write('**2. Construction market by Type of Non-Residential Building (Health, Education, etc.)**')
             # Afficher les données filtrées POUR LE DEUXIEME DATAFRAME
@@ -229,7 +241,10 @@ def main():
                 'Construction type'
             ] = 'Non-Residential - Type Not Defined'
             
-            st.dataframe(filtered_data2[['Country', 'Year', 'Activity type','Construction type', 'Market (constant Billion €)', 'Evolution (%)']], use_container_width=True)
+            # Formater les montants de marché avec des espaces comme séparateurs de milliers
+            filtered_data2['Market (constant €)'] = filtered_data2['Market (constant €)'].apply(lambda x: f"{x:,.0f}".replace(',', ' '))
+
+            st.dataframe(filtered_data2[['Country', 'Year', 'Activity type','Construction type', 'Market (constant €)', 'Evolution (%)']], use_container_width=True)
             st.write("Nb : The type of Non-Residential Buildings renovated is not communicated by Euroconstruct")
             st.markdown("<hr>", unsafe_allow_html=True) 
 
@@ -282,7 +297,9 @@ def main():
                 # Créer un DataFrame à partir des sous-totaux
                 sous_total_df = pd.DataFrame(sous_total_table, index=["Bn €"])
                 # Arrondir les valeurs en milliards à 2 décimales
-                sous_total_df.loc["Bn €"] = sous_total_df.loc["Bn €"].apply(lambda x: round(x, 2))
+                
+                # Remplacer les virgules par des espaces pour la séparation des classes et arrondir à 2 décimales (" après le point et f=float)")
+                sous_total_df.loc["Bn €"] = sous_total_df.loc["Bn €"].apply(lambda x: f"{x:,.2f}".replace(',', ' '))
 
                 # Afficher le tableau des sous-totaux
                 st.markdown(f'**Construction Market Subtotals for {", ".join(map(str, selected_years))}**')
@@ -302,9 +319,12 @@ def main():
             fig_pie_rn.update_layout(
                 title=f'Construction Market by Construction segment for {", ".join(map(str, selected_years))}',
                 font=dict(size=13), 
-                legend={'x': 0.4, 'y': -0.2}
+                legend={'x': 0.4, 'y': -0.2},
 
             )
+
+            # Ajouter les valeurs avec "Bn €" et les pourcentages dans les info-bulles
+            fig_pie_rn.update_traces(hovertemplate='%{label}: %{value:.2f} Bn € (%{percent})')
             #Afficher les pie charts
             st.plotly_chart(fig_pie_rn, use_container_width=True)
           
@@ -324,6 +344,8 @@ def main():
                 font=dict(size=13),
                 legend={'x': 0.4, 'y': -0.2}
             )
+            # Ajouter les valeurs avec "Bn €" et les pourcentages dans les info-bulles
+            fig_pie_new.update_traces(hovertemplate='%{label}: %{value:.2f} Bn € (%{percent})')
             st.plotly_chart(fig_pie_new, use_container_width=True)
             st. write("**Construction Market by activity type according to the Construction segment**")
             # Nouveau sélecteur pour le segment de construction
@@ -350,7 +372,7 @@ def main():
                 font=dict(size=13),
                 legend={'x': 0.4, 'y': -0.2}
             )
-            
+            fig_pie_new2.update_traces(hovertemplate='%{label}: %{value:.2f} Bn € (%{percent})')
             st.plotly_chart(fig_pie_new2, use_container_width=True)
 
                
@@ -384,6 +406,7 @@ def main():
                 showlegend=False,     
             #     legend={'x': 0.4, 'y': -0.7}
             )
+            fig_pie.update_traces(hovertemplate='%{label}: %{value:.2f} Bn € (%{percent})')
             
             # Affichage du graphique
             st.plotly_chart(fig_pie, use_container_width=True)
@@ -431,7 +454,9 @@ def main():
         
     elif choix == "HVAC market":
             data3 = pd.read_excel("Ventilation_trends.xlsx")
+            
             data4 = pd.read_excel("HVAC_market.xlsx")           
+            
             
             st.markdown("<hr>", unsafe_allow_html=True)
             st.markdown("### Page 2 - HVAC Market", unsafe_allow_html=True)
@@ -440,6 +465,7 @@ def main():
             st.markdown('### Overall trends for the Airvance group’s trading zone')
             st.markdown('<script>window.scrollTo(0,0);</script>', unsafe_allow_html=True)
             st.markdown('<script>window.scrollTo(0,0);</script>', unsafe_allow_html=True)
+           
             
     
             # Current path
@@ -449,10 +475,10 @@ def main():
                 st.download_button(label="Download HVAC market image", data=file, file_name="HVAC_market.png", mime="image/png")
             
             st.markdown('<script>window.scrollTo(0,0);</script>', unsafe_allow_html=True)
-            st.image("eurovent.png", use_column_width=True)
+            st.image("Eurovent.png", use_column_width=True)
             # Ajouter un bouton pour télécharger l'image
-            with open("eurovent.png", "rb") as file:
-                st.download_button(label="Download Eurovent image", data=file, file_name="eurovent.png", mime="image/png")
+            with open("Eurovent.png", "rb") as file:
+                st.download_button(label="Download Eurovent image", data=file, file_name="Eurovent.png", mime="image/png")
 
             st.markdown("<hr>", unsafe_allow_html=True)
             st.markdown('<script>window.scrollTo(0,0);</script>', unsafe_allow_html=True)
@@ -462,7 +488,7 @@ def main():
             
 
             # Sélection des filtres
-            selected_countries2 = st.multiselect('Select the country', options=data3['Country'].unique())
+            selected_countries2 = st.session_state.selected_countries
             # Filtrer les données en fonction des filtres sélectionnés
             if selected_countries2:
                 filtered_data3 = data3[data3['Country'].isin(selected_countries2)].copy()
@@ -475,11 +501,13 @@ def main():
 
             # Convertir tous les noms de colonnes en chaînes de caractères
             filtered_data3.columns = filtered_data3.columns.map(str)
-            
+                        
             if '2024' in filtered_data3.columns and '2025' in filtered_data3.columns:
                 filtered_data3["2024"] = filtered_data3["2024"].apply(lambda x:f"{round(x, 1)}%")
                 filtered_data3["2025"] = filtered_data3["2025"].apply(lambda x: f"{round(x, 1)}%")
-            st.dataframe(filtered_data3, use_container_width=True)
+                # Réinitialiser l'index et supprimer la colonne d'index
+            
+            st.dataframe(filtered_data3, use_container_width=True, hide_index=True) #masquage de l'index
 
             
             # Générer le graphique en barres avec Plotly
@@ -515,16 +543,61 @@ def main():
             st.markdown("<hr>", unsafe_allow_html=True)            
             st.markdown('<script>window.scrollTo(0,0);</script>', unsafe_allow_html=True)
             st.markdown("### 2023 Ventilation & HRU Markets", unsafe_allow_html=True)
-            
-           
+                   
 
             # Filtrer les données pour la ventilation uniquement
             ventilation_data = filtered_data4[filtered_data4['HVAC Typology'] == 'VENTILATION']
 
+
+            # Calculer le volume du marché total par application principale du bâtiment et par nom de produit
+            market_volume_by_ventil= ventilation_data.groupby('Division')['Market volume (€)'].sum().reset_index()
+
+            # Créer une colonne formatée pour l'affichage avec des valeurs en millions d'euros et des espaces comme séparateurs de milliers
+            market_volume_by_ventil['Market volume (M€)'] = market_volume_by_ventil['Market volume (€)'].apply(lambda x: f"{x / 1e6:,.0f} M€".replace(',', ' '))
+
+             #Créer le sous-total du marché à afficherau-dessus du treemap
+            total_ventil = ventilation_data['Market volume (€)'].sum()
+            #Formater la valeur en millions d'euros
+            total_ventil_formatted = f"{total_ventil / 1e6:,.0f} M€".replace(',', ' ')
+
+            st.write('On a range of products for which we have recent information.')
+            st.write(f"Total Market volume: {total_ventil_formatted}.")
+
+            ##****TREEMAPS****###
+
+
+            # Créer un treemap en utilisant les valeurs originales pour le graphique
+            fig_treemap_vent = px.treemap(
+                market_volume_by_ventil,
+                path=['Division'],
+                values='Market volume (€)',
+                title=f'2023 Market Volumes (€) by Division for {", ".join(map(str, selected_countries2))}'
+            )
+
+            # Mettre à jour les traces pour afficher les labels avec les valeurs en millions et les info-bulles avec les valeurs entières
+            fig_treemap_vent.update_traces(
+            texttemplate='%{label}<br>%{customdata}',
+            customdata=market_volume_by_ventil['Market volume (M€)'],
+            hovertemplate='<b>%{label}</b><br>Market Volume: %{customdata}<extra></extra>',
+            hoverinfo='label+text+value'
+            )
+
+            # Afficher le treemap dans Streamlit
+            st.plotly_chart(fig_treemap_vent)
+
             # Calculer le volume du marché total par application principale du bâtiment et par nom de produit
             market_volume_by_app_division = ventilation_data.groupby(['Main Building Application', 'Division'])['Market volume (€)'].sum().reset_index()
+         
+            #Créer une colonne formatée pour les info-bulles avec des valeurs entières et des espaces comme séparateurs de milliers
+            market_volume_by_app_division['Market volume (€) (formatted)'] = market_volume_by_app_division['Market volume (€)'].apply(lambda x: f"{x:,.0f}".replace(',', ' '))
 
             # Générer le graphique en barres empilées pour le volume du marché par application principale du bâtiment et par nom de produit
+            # Créer une colonne pour les info-bulles combinant le nom du produit et les valeurs formatées
+            market_volume_by_app_division['hovertext'] = market_volume_by_app_division.apply(
+                lambda row: f"{row['Division']}: {row['Market volume (€) (formatted)']} €", axis=1
+            )
+
+            # Générer le graphique en barres empilées
             fig_ventilation = go.Figure()
 
             for division in market_volume_by_app_division['Division'].unique():
@@ -532,17 +605,19 @@ def main():
                 fig_ventilation.add_trace(go.Bar(
                     name=division,
                     x=product_data['Main Building Application'],
-                    y=product_data['Market volume (€)']
+                    y=product_data['Market volume (€)'],  # Utiliser les valeurs non formatées pour les barres
+                    hovertext=product_data['hovertext'],  # Utiliser la colonne combinée pour les info-bulles
+                    hoverinfo='x+text',  # Afficher le label (x) et le texte des info-bulles
+                    text=product_data['Market volume (€) (formatted)'],  # Ajouter les valeurs formatées pour les info-bulles
+                    textposition='none'  # Ne pas afficher le texte sur les barres
                 ))
 
             fig_ventilation.update_layout(
                 title=f'2023 Market Volumes (€) by Main Building Application and Division for {", ".join(map(str, selected_countries2))}',
-    
                 xaxis_title='Main Building Application. NR = Non-Residential. RES = Residential',
                 yaxis_title='Market Volume (€)',
                 barmode='stack',
-                xaxis_tickangle=-45, 
-                               
+                xaxis_tickangle=-45,
             )
 
             st.plotly_chart(fig_ventilation)
@@ -550,6 +625,12 @@ def main():
             # Générer le graphique en barres empilées pour le volume du marché par application principale du bâtiment et par nom de produit
             # Calculer le volume du marché total par application principale du bâtiment et par nom de produit
             market_volume_by_app_product = ventilation_data.groupby(['Main Building Application', 'Product Name'])['Market volume (€)'].sum().reset_index()
+            market_volume_by_app_product['Market volume (€) (formatted)'] = market_volume_by_app_product['Market volume (€)'].apply(lambda x: f"{x:,.0f}".replace(',', ' '))
+
+            # Créer une colonne pour les info-bulles combinant le nom du produit et les valeurs formatées
+            market_volume_by_app_product['hovertext'] = market_volume_by_app_product.apply(
+                lambda row: f"{row['Product Name']}: {row['Market volume (€) (formatted)']} €", axis=1
+            )
             fig_ventilation2 = go.Figure()
 
             for product in market_volume_by_app_product['Product Name'].unique():
@@ -557,11 +638,15 @@ def main():
                 fig_ventilation2.add_trace(go.Bar(
                     name=product,
                     x=product_data['Main Building Application'],
-                    y=product_data['Market volume (€)']
+                    y=product_data['Market volume (€)'],
+                     hovertext=product_data['hovertext'],  # Utiliser la colonne combinée pour les info-bulles
+                    hoverinfo='x+text',  # Afficher le label (x) et le texte des info-bulles
+                    text=product_data['Market volume (€) (formatted)'],  # Ajouter les valeurs formatées pour les info-bulles
+                    textposition='none'  # Ne pas afficher le texte sur les barres
                 ))
 
             fig_ventilation2.update_layout(
-                title=f'2023 Market Volumes (€) by Main Building Application and Product Name for {", ".join(map(str, selected_countries2))}',
+                title=f'2023 Market Volumes (€) by Main Building Application and Product for {", ".join(map(str, selected_countries2))}',
                 xaxis_title='Main Building Application. NR = Non-Residential. RES = Residential',
                 yaxis_title='Market Volume (€)',
                 barmode='stack',
@@ -571,37 +656,93 @@ def main():
 
             st.plotly_chart(fig_ventilation2)
 
+            
+
             st.markdown("<hr>", unsafe_allow_html=True)            
             st.markdown('<script>window.scrollTo(0,0);</script>', unsafe_allow_html=True)
             st.markdown("### 2023 Heating & Air conditioning Markets", unsafe_allow_html=True)
-            st.write('On a range of products for which we have recent information')
-
+            
             # Filtrer les données pour Heating & air conditioning
             airco_data = filtered_data4[filtered_data4['HVAC Typology'] == 'HEATING & AIR CONDITIONING']
 
-             # Calculer le volume du marché total par application principale du bâtiment et par nom de produit
-            market_volume_by_airco = airco_data.groupby(['Main Building Application', 'Product Name'])['Market volume (€)'].sum().reset_index()
+            # Calculer le volume du marché total par application principale du bâtiment et par nom de produit pour réaliser le treemap
+            market_volume_by_airco = airco_data.groupby('Product Name')['Market volume (€)'].sum().reset_index()
 
+            # Créer une colonne formatée pour l'affichage avec des valeurs en millions d'euros et des espaces comme séparateurs de milliers
+            market_volume_by_airco['Market volume (M€)'] = market_volume_by_airco['Market volume (€)'].apply(lambda x: f"{x / 1e6:,.0f} M€".replace(',', ' '))
+            
+            #Créer le sous-total du marché à afficherau-dessus du treemap
+            total_airco = airco_data['Market volume (€)'].sum()
+            #Formater la valeur en millions d'euros
+            total_airco_formatted = f"{total_airco / 1e6:,.0f} M€".replace(',', ' ')
+
+            st.write('On a range of products for which we have recent information.')
+            st.write(f"Total Market volume: {total_airco_formatted}.")
+            
+            
+
+            ##****TREEMAPS****###
+
+
+            # Créer un treemap en utilisant les valeurs originales pour le graphique
+            fig_treemap = px.treemap(
+                market_volume_by_airco,
+                path=['Product Name'],
+                values='Market volume (€)',
+                title=f'2023 Market Volumes (€) by Product for {", ".join(map(str, selected_countries2))}'
+            )
+             # Mettre à jour les traces pour afficher les labels avec les valeurs en millions et les info-bulles avec les valeurs entières
+            fig_treemap.update_traces(
+            texttemplate='%{label}<br>%{customdata}',
+            customdata=market_volume_by_airco['Market volume (M€)'],
+            hovertemplate='<b>%{label}</b><br>Market Volume: %{customdata}<extra></extra>',
+            hoverinfo='label+text+value'
+            )
+            #st.markdown("<h2 style='margin-bottom: -1px;'>Treemap Title</h2>", unsafe_allow_html=True)
+            st.plotly_chart(fig_treemap)
+            # Réduire l'espace entre le treemap et le total
+            #st.markdown("<div style='margin-top: -12px;'></div>", unsafe_allow_html=True)
+            
+            #Histogrammes
+            
+            
+            market_volume_by_airco1 = airco_data.groupby(['Main Building Application', 'Product Name'])['Market volume (€)'].sum().reset_index()
+            #Créer une colonne formatée pour les info-bulles avec des valeurs entières et des espaces comme séparateurs de milliers
+            market_volume_by_airco1['Market volume (€) (formatted)'] = market_volume_by_airco1['Market volume (€)'].apply(lambda x: f"{x:,.0f}".replace(',', ' '))
+            # Créer une colonne pour les info-bulles combinant le nom du produit et les valeurs formatées
+            market_volume_by_airco1['hovertext'] = market_volume_by_airco1.apply(
+                lambda row: f"{row['Product Name']}: {row['Market volume (€) (formatted)']} €", axis=1
+            )
+            
             fig_airco = go.Figure()
 
             for product in market_volume_by_airco['Product Name'].unique():
-                product_data = market_volume_by_airco[market_volume_by_airco['Product Name'] == product]
+                product_data = market_volume_by_airco1[market_volume_by_airco1['Product Name'] == product]
+                # fixer l'affichage des chiffres
                 fig_airco.add_trace(go.Bar(
                     name=product,
                     x=product_data['Main Building Application'],
-                    y=product_data['Market volume (€)']
+                    y=product_data['Market volume (€)'], 
+                    customdata=product_data['hovertext'],  # Utiliser la colonne combinée pour les info-bulles
+                    hovertemplate='%{customdata}<extra></extra>',  # Afficher le texte personnalisé dans les info-bulles
+                    text=product_data['Market volume (€) (formatted)'],
+                    textposition='none'#n'affiche pas en dur le texte sur les barres
+
                 ))
 
             fig_airco.update_layout(
-                title=f'2023 Market Volumes (€) by Main Building Application and Product Name for {", ".join(map(str, selected_countries2))}',
+                title=f'2023 Market Volumes (€) by Main Building Application and Product for {", ".join(map(str, selected_countries2))}',
                 xaxis_title='Main Building Application. NR = Non-Residential. RES = Residential',
                 yaxis_title='Market Volume (€)',
                 barmode='stack',
                 xaxis_tickangle=-45, 
                                
             )
+        
 
             st.plotly_chart(fig_airco)
+
+
            
             st.markdown('<script>window.scrollTo(0,0);</script>', unsafe_allow_html=True)
             st.markdown('<script>window.scrollTo(0,0);</script>', unsafe_allow_html=True)
@@ -634,11 +775,34 @@ def main():
                
             else:
                 filtered_data4 = filtered_data4[~filtered_data4['Product Name'].isin(excluded_products)].copy()
+            #classes séparées par un espace plutôt qu'une virgule et volumes arrondis à 0 décimale après la virgule
+            # Boucle pour remplacer les virgules par des espaces dans les colonnes spécifiées
+            # Liste des colonnes à transformer
+            columns_to_format = ['Units sold (qty)', 'Avg selling price (€)', 'Market volume (€)']
             
-            
+            for column in columns_to_format:
+                filtered_data4[column] = filtered_data4[column].apply(lambda x: f"{x:,.0f}".replace(',', ' '))
+
             st.dataframe(filtered_data4[['Country', 'Year', 'HVAC Typology', \
                                     'Product Name', 'Units sold (qty)', 'Avg selling price (€)', 'Market volume (€)',\
                                     'Market evolution in units', 'Market evolution in value (€)', 'Source']], use_container_width=True)
+            
+            st.markdown("<hr>", unsafe_allow_html=True)
+            st.markdown("### Appendix", unsafe_allow_html=True)
+            st.markdown("<hr>", unsafe_allow_html=True)
+                # Current path
+            st.image("ahu.png", use_column_width=True)
+            # Ajouter un bouton pour télécharger l'image
+            with open("ahu.png", "rb") as file:
+                st.download_button(label="Download", data=file, file_name="ahu.png", mime="image/png")
+            
+            st.markdown("<hr>", unsafe_allow_html=True)
+            st.markdown('<script>window.scrollTo(0,0);</script>', unsafe_allow_html=True)
+            st.image("fcu.png", use_column_width=True)
+            # Ajouter un bouton pour télécharger l'image
+            with open("fcu.png", "rb") as file:
+                st.download_button(label="Download", data=file, file_name="fcu.png", mime="image/png")
+            st.markdown("<hr>", unsafe_allow_html=True)
             
             
             
