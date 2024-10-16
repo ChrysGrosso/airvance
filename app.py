@@ -518,7 +518,7 @@ def main():
 
             # Mettre à jour la mise en page pour ajuster les étiquettes de l'axe x
             fig5.update_layout(
-                title='2024 & 2025 Ventilation & HRU Market trends by country (Main application : Non-Residential)',
+                title=f'2024 & 2025 Ventilation & HRU Market trends for {", ".join(map(str, selected_countries2))}(Main application : Non-Residential)',
                 #xaxis_title='Country',
                 yaxis_title='Percentage Change (%)',
                 barmode='group',
